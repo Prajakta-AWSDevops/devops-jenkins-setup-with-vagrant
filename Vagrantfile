@@ -11,12 +11,20 @@ $script = <<ENDSCRIPT
   sudo apt-get install jenkins -y
   sudo systemctl enable jenkins
   sudo systemctl start jenkins
+  rm -rf ~/sw
+  rm -rf /tmp/apache-maven-3.9.6-bin.tar.gz
+  wget -q wget https://dlcdn.apache.org/maven/maven-3/3.9.6/binaries/apache-maven-3.9.6-bin.tar.gz -P /tmp
+  mkdir ~/sw/ 
+  tar -xvzf /tmp/apache-maven-3.9.6-bin.tar.gz -C ~/sw/
+  rm /tmp/apache-maven-3.9.6-bin.tar.gz
+  mv ~/sw/apache-maven-3.9.6 ~/sw/maven
 ENDSCRIPT
 
 Vagrant.configure("2") do |config|
   config.vm.define "jenkinsserver" do |jenkinsserver|
     jenkinsserver.vm.box_download_insecure = true
-    jenkinsserver.vm.box = "hashicorp/bionic64"
+    jenkinsserver.vm.box = "bento/ubuntu-24.04"
+    jenkinsserver.vm.box_version = "202404.26.0"
     jenkinsserver.vm.network "forwarded_port", guest: 8080, host: 8080
     jenkinsserver.vm.network "forwarded_port", guest: 8081, host: 8081
     jenkinsserver.vm.network "private_network", ip: "100.0.0.2"
@@ -25,6 +33,8 @@ Vagrant.configure("2") do |config|
       v.name = "jenkinsserver"
       v.memory = 2048
       v.cpus = 2
+      v.customize ["modifyvm", :id, "--uart1", "0x3F8", "4"]
+      v.customize ["modifyvm", :id, "--uartmode1", "file", File::NULL]
     end
     jenkinsserver.vm.provision "shell", inline: $script
 end
