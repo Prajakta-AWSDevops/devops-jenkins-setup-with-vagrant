@@ -68,7 +68,7 @@ config.vm.define "sonarserver" do |sonarserver|
         v.memory = 2048
         v.cpus = 2
         v.customize ["modifyvm", :id, "--uart1", "0x3F8", "4"]
-        v.customize ["modifyvm", :id, "--uartmode1", "file", Fi
+        v.customize ["modifyvm", :id, "--uartmode1", "file", File::NULL]
       end
       sonarserver.vm.provision "shell", inline: $sonar_script
     end
