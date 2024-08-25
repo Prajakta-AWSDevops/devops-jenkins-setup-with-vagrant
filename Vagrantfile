@@ -18,7 +18,25 @@ $script = <<ENDSCRIPT
   tar -xvzf /tmp/apache-maven-3.9.6-bin.tar.gz -C ~/sw/
   rm /tmp/apache-maven-3.9.6-bin.tar.gz
   mv ~/sw/apache-maven-3.9.6 ~/sw/maven
+  echo 'MAVEN_HOME=~/sw/maven' >> ~/.bashrc
+  echo 'M2_HOME=$MAVEN_HOME' >> ~/.bashrc
+  echo 'PATH=$MAVEN_HOME/bin:${PATH}' >> ~/.bashrc
+  sudo usermod -aG vagrant jenkins
+  sudo systemctl restart jenkins
 ENDSCRIPT
+
+$sonar_script = <<SCRIPT
+  sudo apt update -y
+  sudo apt-get install ca-certificates curl gnupg -y
+  sudo install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  sudo chmod a+r /etc/apt/keyrings/docker.gpg
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  sudo apt update -y
+  sudo apt-get install docker-ce -y
+  sudo usermod -aG docker vagrant
+  sudo docker run -d --name sonarqube -p 9000:9000 sonarqube
+SCRIPT
 
 Vagrant.configure("2") do |config|
   config.vm.define "jenkinsserver" do |jenkinsserver|
@@ -38,4 +56,20 @@ Vagrant.configure("2") do |config|
     end
     jenkinsserver.vm.provision "shell", inline: $script
 end
+config.vm.define "sonarserver" do |sonarserver|
+      sonarserver.vm.box_download_insecure = true
+      sonarserver.vm.box = "bento/ubuntu-24.04"
+      sonarserver.vm..box_version = "202404.26.0"
+      sonarserver.vm.network "forwarded_port", guest: 9000, host: 9000
+      sonarserver.vm.network "private_network", ip: "100.0.0.3"
+      sonarserver.vm.hostname = "sonarserver"
+      sonarserver.vm.provider "virtualbox" do |v|
+        v.name = "sonarserver"
+        v.memory = 2048
+        v.cpus = 2
+        v.customize ["modifyvm", :id, "--uart1", "0x3F8", "4"]
+        v.customize ["modifyvm", :id, "--uartmode1", "file", Fi
+      end
+      sonarserver.vm.provision "shell", inline: $sonar_script
+    end
 end
